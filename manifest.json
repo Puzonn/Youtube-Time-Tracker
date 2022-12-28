@@ -1,0 +1,25 @@
+{
+  "name": "Youtube Time Tracker",
+  "version": "1.0",
+  "manifest_version": 3,
+  "permissions":[
+    "background",
+    "tabs",
+    "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "view.html"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "web-tracker.js"
+      ],
+      "matches": [
+        "https://www.youtube.com/watch?v=*"
+      ]
+    }
+  ]
+}
