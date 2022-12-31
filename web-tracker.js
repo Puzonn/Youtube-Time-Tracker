@@ -1,26 +1,62 @@
-const apiKey = {YOUR_YOUTUBE_API_KEY}
+class Connection 
+{
+    constructor()
+    {
+        this.connect();
+    }
+
+    sendMessage(action, data){
+        this.connection.postMessage({action: action, data: data});
+    }
+
+    connect(){
+        this.connection = chrome.runtime.connect();
+    }
+
+    disconnect(){
+        this.connect.disconnect();
+    }
+}
+
+const apiKey = "AIzaSyA4GgVJzUOFmrewoDQU-Bd6i15LchboG3o"
+
+let CurrentUrl;
 
 let currentVideoId;
 
-let pauseButton;
-let url;
+let ElementPauseButton;
+
+let CurrentInfo = null;
+
+/* Long lived connection */
+const connection = new Connection();
 
 window.addEventListener("load", function () {
+    chrome.runtime.onMessage.addListener(
+        function(request, sender, sendResponse) 
+        {
+            sendResponse(CurrentInfo)
+        }
+    )
+
     Init();
 });
 
+
 function Init(){
-    pauseButton = this.document.getElementsByClassName('ytp-play-button ytp-button')[0];
-    url = window.location.href;
-    
-    currentVideoId = GetVideoId(url);
+    CurrentUrl = window.location.href;
+    currentVideoId = GetVideoId(CurrentUrl);
 
     if(typeof currentVideoId === 'undefined'){
-        console.error('videoId is undefined')
+        console.log('No youtube video url')
+        ListenForPlayer();
         return;
     }
+
+    ElementPauseButton = this.document.getElementsByClassName('ytp-play-button ytp-button')[0];
     
     FetchVideoData(currentVideoId, (data) => {
+
         const channelName = data.items[0].snippet.channelTitle;
 
         GetTime(channelName, (time) => {
@@ -30,10 +66,10 @@ function Init(){
 }
 
 function IsPlayerPaused(){
-    const pauseAttribute = pauseButton.getAttribute('data-title-no-tooltip');
+    const pauseAttribute = ElementPauseButton.getAttribute('data-title-no-tooltip');
 
-    if(pauseButton === null){
-        pauseButton = this.document.getElementsByClassName('ytp-play-button ytp-button')[0];
+    if(ElementPauseButton === null){
+        ElementPauseButton = this.document.getElementsByClassName('ytp-play-button ytp-button')[0];
         return false;
     }
 
@@ -48,8 +84,12 @@ function IsPlayerPaused(){
 function GetVideoId(url){
     const video_id = url.split('v=')[1];
 
+    if(typeof video_id === 'undefined'){
+        return undefined;
+    }
     const ampersandPosition = video_id.indexOf('&');
 
+    //Support for more browsers
     if(ampersandPosition != -1) {
        return video_id.substring(0, ampersandPosition);
     }
@@ -82,7 +122,23 @@ function SetTime(channelName, time){
         VideoId: currentVideoId
     }
 
-    chrome.runtime.sendMessage({action: 'update', data: actualInfo});
+    CurrentInfo = actualInfo;
+
+    connection.sendMessage('update', actualInfo);
+}
+
+/* When url is 'https://www.youtube.com/' <= from manisteft.json,  it will listen for url change to 'https://www.youtube.com/watch?=*' */
+function ListenForPlayer()
+{
+    const listen = () => 
+    {
+        if(IsUrlChanged()){
+            clearInterval(loop);
+            Init();
+        }
+    }
+    
+    const loop = setInterval(listen, 1000)
 }
 
 function CreateLoop(actualTime, channelName){
@@ -102,7 +158,7 @@ function CreateLoop(actualTime, channelName){
             SetTime(channelName, time);
         }
 
-        if(IsUrlChanged()){
+        if(DidUrlChanged()){
             Init();
             return;
         }
@@ -113,6 +169,6 @@ function CreateLoop(actualTime, channelName){
     loop();
 }
 
-function IsUrlChanged(){
-    return url !== window.location.href;
+function DidUrlChanged(){
+    return CurrentUrl !== window.location.href;
 }

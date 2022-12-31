@@ -18,7 +18,7 @@
         "web-tracker.js"
       ],
       "matches": [
-        "https://www.youtube.com/watch?v=*"
+        "https://www.youtube.com/*"
       ]
     }
   ]
